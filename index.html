@@ -1,1 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>歩数連動プレイヤー (WebRTC版)</title>
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <style>
+        body { font-family: sans-serif; padding: 20px; background: #f0f2f5; text-align: center; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        button { padding: 15px 30px; font-size: 18px; }
+        input { padding: 10px; width: 80%; }
+    </style>
+</head>
+<body>
+
+<div id="setup" class="card">
+    <h3>IamB</h3>
+    <input id="my-id" type="text" placeholder="playerB">
+    <button onclick="startPeer()">接続準備</button>
+</div>
+
+<div id="main" class="card" style="display:none;">
+    <h3>接続中: <span id="display-my-id"></span></h3>
+    <p>ステータス: <span id="status">待機中</span></p>
+    
+    <!-- A機のUI -->
+    <div id="ui-a" style="display:none;">
+        <input id="target-id" type="text" placeholder="IamA">
+        <button onclick="connectToPeer()">相手に接続</button><br><br>
+        <button onclick="sendStep()">👣 1歩（信号送信）</button>
+    </div>
+
+    <!-- B機のUI -->
+    <div id="ui-b" style="display:none;">
+        <p>受信したBPM: <strong id="bpm-val">0</strong></p>
+    </div>
+</div>
+
+<script>
+    // スクリプトの冒頭に配置
+window.onerror = function(message, source, lineno, colno, error) {
+    alert("エラー: " + message);
+};
+
+    let peer, conn;
+
+    function startPeer() {
+        const id = document.getElementById('my-id').value;
+        peer = new Peer(id);
+        
+        peer.on('open', (id) => {
+            document.getElementById('display-my-id').innerText = id;
+            document.getElementById('status').innerText = "オンライン";
+            document.getElementById('setup').style.display = 'none';
+            document.getElementById('main').style.display = 'block';
+            
+            // 接続待ち受け
+            peer.on('connection', (c) => {
+                conn = c;
+                setupConn();
+            });
+        });
+    }
+
+    function connectToPeer() {
+        const targetId = document.getElementById('target-id').value;
+        conn = peer.connect(targetId);
+        setupConn();
+    }
+
+   function setupConn() {
+        document.getElementById('status').innerText = "接続完了！";
+        // ここでしっかりUIを表示させる
+        document.getElementById('ui-a').style.display = 'block';
+        document.getElementById('ui-b').style.display = 'block';
+        
+        conn.on('data', (data) => {
+            document.getElementById('bpm-val').innerText = data.bpm;
+            console.log("受信:", data.bpm);
+        });
+   }
+
+    function sendStep() {
+        const mockBpm = Math.floor(Math.random() * 50) + 60; // 60~110
+        if (conn && conn.open) {
+            conn.send({ bpm: mockBpm });
+            alert("送信: " + mockBpm);
+        }
+    }
+</script>
+</body>
+</html>
 
